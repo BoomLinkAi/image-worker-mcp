@@ -2,10 +2,6 @@
 
 A command-line tool that provides an MCP server for image resizing.
 
-## Sponsorship
-
-Sponsored by [BoomLink.ai](https://boomlink.ai) - AI-powered solutions for modern development.
-
 ## Installation
 
 You can install the Image Resize MCP CLI globally to use it across projects:
@@ -244,3 +240,10 @@ MIT
 ## Author
 
 Vuong Ngo @ https://boomlink.ai
+
+## Sponsorship
+
+Sponsored by [BoomLink.ai](https://boomlink.ai)
+
+
+[![BoomLink.ai Logo](https://boomlink.ai/logo.svg)](https://boomlink.ai)
