@@ -1,0 +1,47 @@
+{
+  "name": "@boomlinkai/image-worker-mcp",
+  "version": "0.0.0",
+  "description": "MCP server for image worker - Resize, transform, etc...",
+  "private": true,
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "bin": "bin/image-resize-mcp.mjs",
+  "scripts": {
+    "build": "vite build --config vite.config.ts",
+    "lint": "eslint ./src",
+    "fixcode": "eslint --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.11.4",
+    "chalk": "5.3.0",
+    "commander": "12.0.0",
+    "node-fetch": "^3.3.2",
+    "sharp": "0.34.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.27.0",
+    "@rushstack/eslint-config": "3.7.0",
+    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
+    "@tsconfig/node20": "^20.1.4",
+    "@types/node": "20.10.5",
+    "eslint": "9.25.1",
+    "ts-node": "10.9.2",
+    "typescript": "5.8.3",
+    "vite": "5.2.11",
+    "vite-plugin-external": "6.0.0",
+    "vitest": "^3.1.4"
+  },
+  "author": "Vuong Ngo @ https://boomlink.ai",
+  "email": "vuong@boomlink.ai",
+  "url": "http://boomlink.ai",
+  "keywords": [
+    "MCP",
+    "Sharp",
+    "Image Resize"
+  ],
+  "license": "MIT"
+}
