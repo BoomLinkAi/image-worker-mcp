@@ -16,7 +16,8 @@ export default [
       '**/node_modules/**',
       '**/dist/**',
       '**/bin/**',
-      'prettier.config.js'
+      'prettier.config.js',
+      'commitlint.config.js'
     ]
   },
   
