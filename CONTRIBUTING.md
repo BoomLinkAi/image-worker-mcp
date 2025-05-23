@@ -4,7 +4,7 @@ First off, thank you for considering contributing to @boomlinkai/image-worker-mc
 
 ## Where do I go from here?
 
-If you've noticed a bug or have a question, [search the issue tracker](https://github.com/your-github-username/image-resize-mcp/issues) to see if someone else has already reported the issue. If not, feel free to open a new issue.
+If you've noticed a bug or have a question, [search the issue tracker](https://github.com/BoomLinkAi/image-worker-mcp/issues) to see if someone else has already reported the issue. If not, feel free to open a new issue.
 
 ## Fork & create a branch
 

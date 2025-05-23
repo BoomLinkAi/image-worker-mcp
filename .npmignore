@@ -1,0 +1,58 @@
+# Source files
+src/
+
+# Test files
+tests/
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# macOS
+.DS_Store
+
+# Environment variables
+.env
+.env.*
+
+# Cache files
+.eslintcache
+
+# Config files
+eslint.config.mjs
+commitlint.config.js
+prettier.config.js
+tsconfig.json
+vite.config.ts
+vitest.config.ts
+
+# Lockfiles
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# Git
+.gitignore
+.gitattributes
+
+# Contribution guide (optional, can be kept if relevant for consumers)
+CONTRIBUTING.md
+
+# Vite specific build artifacts if not in dist
+# (Assuming 'dist' is the only output directory needed as per package.json)
+# If there are other build outputs outside 'dist', they should be listed here.
+
+# IDE & editor directories
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

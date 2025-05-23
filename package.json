@@ -1,12 +1,11 @@
 {
   "name": "@boomlinkai/image-worker-mcp",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "MCP server for image worker - Resize, transform, etc...",
-  "private": true,
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
-  "bin": "bin/image-resize-mcp.mjs",
+  "bin": "bin/image-worker-mcp.mjs",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "exports": {
@@ -17,7 +16,7 @@
   },
   "scripts": {
     "build": "vite build --config vite.config.ts",
-    "lint": "eslint ./src",
+    "lint": "eslint",
     "fixcode": "eslint --fix",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

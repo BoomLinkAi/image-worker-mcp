@@ -4,7 +4,7 @@ import { VERSION, ImageResizeMcpServer } from '../dist/index.mjs';
 
 const init = () => {
   program
-    .name('image-resize-mcp')
+    .name('image-worker-mcp')
     .version(VERSION)
     .description('MCP server for image resizing')
     .action(() => {
