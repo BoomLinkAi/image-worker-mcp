@@ -20,7 +20,14 @@
     "lint": "eslint ./src",
     "fixcode": "eslint --fix",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepare": "husky",
+    "commit": "cz"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.11.4",
@@ -31,12 +38,17 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "@eslint/js": "^9.27.0",
     "@rushstack/eslint-config": "3.7.0",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@tsconfig/node20": "^20.1.4",
     "@types/node": "20.10.5",
+    "commitizen": "^4.3.1",
+    "cz-conventional-changelog": "^3.3.0",
     "eslint": "9.25.1",
+    "husky": "^9.1.7",
     "ts-node": "10.9.2",
     "typescript": "5.8.3",
     "vite": "5.2.11",
