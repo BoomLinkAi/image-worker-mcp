@@ -2,6 +2,7 @@ import { z } from 'zod';
 import fs from 'fs';
 import sharp, { Sharp } from 'sharp';
 import { ErrorCode, McpError, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import libheif from 'libheif-js/wasm-bundle';
 
 import { SUPPORTED_OUTPUT_FORMATS, DEFAULT_HEIGHT, DEFAULT_QUALITY, DEFAULT_WIDTH } from '../constants';
 import { base64ToBuffer, bufferToBase64, fetchImageFromUrl, isValidInputFormat, normalizeFilePath } from '../utils';
@@ -23,28 +24,30 @@ export const resizeImageSchema = {
       description: 'Base64-encoded image data (with or without data URL prefix)',
     })
     .optional(),
-  format: z.enum(SUPPORTED_OUTPUT_FORMATS as [string, ...string[]]).optional(),
-  width: z.number().min(1).max(10000).optional(),
-  height: z.number().min(1).max(10000).optional(),
-  quality: z.number().min(1).max(100).optional(),
-  fit: z.enum(['cover', 'contain', 'fill', 'inside', 'outside']).optional(),
+  format: z.enum(SUPPORTED_OUTPUT_FORMATS as [string, ...string[]]).optional().describe("Output image format"),
+  width: z.number().min(1).max(10000).optional().describe("Width of the resized image in pixels"),
+  height: z.number().min(1).max(10000).optional().describe("Height of the resized image in pixels"),
+  quality: z.number().min(1).max(100).optional().describe("Quality of the output image (1-100)"),
+  fit: z.enum(['cover', 'contain', 'fill', 'inside', 'outside']).optional().describe("How the image should be resized to fit both provided dimensions"),
   position: z
-    .enum(['centre', 'center', 'north', 'east', 'south', 'west', 'northeast', 'southeast', 'southwest', 'northwest'])
-    .optional(),
-  background: z.string().optional(),
-  withoutEnlargement: z.boolean().optional(),
-  withoutReduction: z.boolean().optional(),
-  rotate: z.number().optional(),
-  flip: z.boolean().optional(),
-  flop: z.boolean().optional(),
-  grayscale: z.boolean().optional(),
-  blur: z.number().min(0.3).max(1000).optional(),
-  sharpen: z.number().min(0.3).max(1000).optional(),
-  gamma: z.number().min(1.0).max(3.0).optional(),
-  negate: z.boolean().optional(),
-  normalize: z.boolean().optional(),
-  threshold: z.number().min(0).max(255).optional(),
-  trim: z.boolean().optional(),
+    .enum(['top', 'right top', 'right', 'right bottom', 'bottom', 'left bottom', 'left', 'left top'])
+    .optional()
+    .describe("Position when using fit 'cover' or 'contain'"),
+  background: z.string().optional().describe("Background color when using fit 'contain' or 'cover', or when extending. Accepts hex, rgb, rgba, or CSS color names"),
+  withoutEnlargement: z.boolean().optional().describe("Do not enlarge if the width or height are already less than the specified dimensions"),
+  withoutReduction: z.boolean().optional().describe("Do not reduce if the width or height are already greater than the specified dimensions"),
+  rotate: z.number().optional().describe("Angle of rotation (positive for clockwise, negative for counter-clockwise)"),
+  flip: z.boolean().optional().describe("Flip the image vertically"),
+  flop: z.boolean().optional().describe("Flop the image horizontally"),
+  grayscale: z.boolean().optional().describe("Convert the image to grayscale"),
+  blur: z.number().min(0.3).max(1000).optional().describe("Apply a Gaussian blur. Value is the sigma of the Gaussian kernel (0.3-1000)"),
+  sharpen: z.number().min(0.3).max(1000).optional().describe("Apply a sharpening. Value is the sigma of the Gaussian kernel (0.3-1000)"),
+  gamma: z.number().min(1.0).max(3.0).optional().describe("Apply gamma correction (1.0-3.0)"),
+  negate: z.boolean().optional().describe("Produce a negative of the image"),
+  normalize: z.boolean().optional().describe("Enhance image contrast by stretching its intensity levels"),
+  threshold: z.number().min(0).max(255).optional().describe("Apply a threshold to the image, turning pixels above the threshold white and below black (0-255)"),
+  trim: z.boolean().optional().describe("Trim 'boring' pixels from all edges that contain values similar to the top-left pixel"),
+  outputImage: z.boolean().optional().default(false).describe("Whether to include the base64-encoded image in the output response"),
   outputPath: z
     .string({
       description: 'Path to save the resized image (if not provided, image will only be returned as base64)',
@@ -90,15 +93,62 @@ class ImageProcessor {
     return inputBuffer;
   }
 
-  private async validateAndInitializeSharp(inputBuffer: Buffer): Promise<Sharp> {
-    const image = sharp(inputBuffer);
-    const metadata = await image.metadata();
-    this.inputFormat = metadata.format;
+  private isHeif(buffer: Buffer): boolean {
+    const signature = buffer.toString('ascii', 4, 12);
+    return ['ftypheic', 'ftypheix', 'ftyphevc', 'ftyphevx', 'ftypmif1', 'ftypmsf1'].some((s) => signature.includes(s));
+  }
 
-    if (!this.inputFormat || !isValidInputFormat(this.inputFormat)) {
-      throw new McpError(ErrorCode.InvalidParams, `Unsupported input format: ${this.inputFormat}`);
+  private async validateAndInitializeSharp(inputBuffer: Buffer): Promise<Sharp> {
+    if (this.isHeif(inputBuffer)) {
+      try {
+        const decoder = new libheif.HeifDecoder();
+        const decodedImages = decoder.decode(inputBuffer);
+        if (!decodedImages || decodedImages.length === 0) {
+          throw new Error('HEIF decoding failed or produced no images.');
+        }
+        // Use the first image
+        const heifImage = decodedImages[0];
+        const width = heifImage.get_width();
+        const height = heifImage.get_height();
+        const imageData = await new Promise<any>((resolve, reject) => {
+          heifImage.display({ data: new Uint8ClampedArray(width*height*4), width, height }, (displayData) => {
+            if (!displayData) {
+              return reject(new Error('HEIF processing error'));
+            }
+
+            resolve(displayData);
+          });
+        });
+        const { data } = imageData;
+
+        // Convert data (ArrayBufferLike) to Buffer
+        const pixelBuffer = Buffer.from(data);
+
+        this.inputFormat = 'heic'; // Or 'heif', could be refined if libheif-js provides more specific format
+        // Sharp can process raw pixel data
+        return sharp(pixelBuffer, {
+          raw: {
+            width: width,
+            height: height,
+            channels: 4, // Assuming RGBA, common for HEIF decoders
+          },
+        });
+      } catch (error) {
+        throw new McpError(
+          ErrorCode.InvalidParams,
+          `Failed to decode HEIF image: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    } else {
+      const image = sharp(inputBuffer);
+      const metadata = await image.metadata();
+      this.inputFormat = metadata.format;
+
+      if (!this.inputFormat || !isValidInputFormat(this.inputFormat)) {
+        throw new McpError(ErrorCode.InvalidParams, `Unsupported input format: ${this.inputFormat}`);
+      }
+      return image;
     }
-    return image;
   }
 
   private applyResize(image: Sharp): Sharp {
@@ -231,7 +281,7 @@ class ImageProcessor {
             type: 'text',
             text: JSON.stringify(
               {
-                image: outputBase64,
+                ...(this.args.outputImage ? { image: outputBase64 } : {}),
                 format: outputFormat,
                 width: finalMetadata.width,
                 height: finalMetadata.height,
