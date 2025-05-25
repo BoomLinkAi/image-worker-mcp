@@ -2,6 +2,7 @@ import { z } from 'zod';
 import fs from 'fs';
 import sharp, { Sharp } from 'sharp';
 import { ErrorCode, McpError, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import libheif from 'libheif-js/wasm-bundle';
 
 import { SUPPORTED_OUTPUT_FORMATS, DEFAULT_HEIGHT, DEFAULT_QUALITY, DEFAULT_WIDTH } from '../constants';
 import { base64ToBuffer, bufferToBase64, fetchImageFromUrl, isValidInputFormat, normalizeFilePath } from '../utils';
@@ -90,15 +91,62 @@ class ImageProcessor {
     return inputBuffer;
   }
 
-  private async validateAndInitializeSharp(inputBuffer: Buffer): Promise<Sharp> {
-    const image = sharp(inputBuffer);
-    const metadata = await image.metadata();
-    this.inputFormat = metadata.format;
+  private isHeif(buffer: Buffer): boolean {
+    const signature = buffer.toString('ascii', 4, 12);
+    return ['ftypheic', 'ftypheix', 'ftyphevc', 'ftyphevx', 'ftypmif1', 'ftypmsf1'].some((s) => signature.includes(s));
+  }
 
-    if (!this.inputFormat || !isValidInputFormat(this.inputFormat)) {
-      throw new McpError(ErrorCode.InvalidParams, `Unsupported input format: ${this.inputFormat}`);
+  private async validateAndInitializeSharp(inputBuffer: Buffer): Promise<Sharp> {
+    if (this.isHeif(inputBuffer)) {
+      try {
+        const decoder = new libheif.HeifDecoder();
+        const decodedImages = decoder.decode(inputBuffer);
+        if (!decodedImages || decodedImages.length === 0) {
+          throw new Error('HEIF decoding failed or produced no images.');
+        }
+        // Use the first image
+        const heifImage = decodedImages[0];
+        const width = heifImage.get_width();
+        const height = heifImage.get_height();
+        const imageData = await new Promise<any>((resolve, reject) => {
+          heifImage.display({ data: new Uint8ClampedArray(width*height*4), width, height }, (displayData) => {
+            if (!displayData) {
+              return reject(new Error('HEIF processing error'));
+            }
+
+            resolve(displayData);
+          });
+        });
+        const { data } = imageData;
+
+        // Convert data (ArrayBufferLike) to Buffer
+        const pixelBuffer = Buffer.from(data);
+
+        this.inputFormat = 'heic'; // Or 'heif', could be refined if libheif-js provides more specific format
+        // Sharp can process raw pixel data
+        return sharp(pixelBuffer, {
+          raw: {
+            width: width,
+            height: height,
+            channels: 4, // Assuming RGBA, common for HEIF decoders
+          },
+        });
+      } catch (error) {
+        throw new McpError(
+          ErrorCode.InvalidParams,
+          `Failed to decode HEIF image: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    } else {
+      const image = sharp(inputBuffer);
+      const metadata = await image.metadata();
+      this.inputFormat = metadata.format;
+
+      if (!this.inputFormat || !isValidInputFormat(this.inputFormat)) {
+        throw new McpError(ErrorCode.InvalidParams, `Unsupported input format: ${this.inputFormat}`);
+      }
+      return image;
     }
-    return image;
   }
 
   private applyResize(image: Sharp): Sharp {
