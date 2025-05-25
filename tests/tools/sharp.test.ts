@@ -52,6 +52,7 @@ vi.mock('../../src/utils.js', () => ({
 export type ResizeImageArgs = z.infer<z.ZodObject<typeof resizeImageSchema>>;
 const createValidArgs = (overrides: Partial<ResizeImageArgs> = {}): ResizeImageArgs => ({
   imagePath: 'test.jpg', // Default to imagePath
+  outputImage: true,
   ...overrides,
 });
 
@@ -337,6 +338,7 @@ describe('resizeImageTool', () => {
       width: 60, // Different dimensions for testing
       height: 40,
       quality: 85,
+      outputImage: true,
       outputPath: outputJpegPath,
     };
 
@@ -429,6 +431,7 @@ describe('resizeImageTool', () => {
       format: 'png',
       width: targetWidth,
       height: targetHeight,
+      outputImage: true,
       quality: 90,
       // No outputPath, so it should return base64 only
     };
