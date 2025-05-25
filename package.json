@@ -1,6 +1,6 @@
 {
   "name": "@boomlinkai/image-worker-mcp",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "MCP server for image worker - Resize, transform, etc...",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"

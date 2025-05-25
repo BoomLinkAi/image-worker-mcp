@@ -26,7 +26,7 @@ npx @boomlinkai/image-worker-mcp
 ## Features
 
 - Resize images to different dimensions
-- Convert images between formats (JPEG, PNG, WebP, AVIF)
+- Convert images between formats (JPEG, PNG, WebP, AVIF) or from (HEIC, HEIF)
 - Optimize images for web use
 - Apply basic transformations (rotate, flip, etc.)
 
@@ -194,6 +194,9 @@ The `resize_image` tool, provided by this MCP server, accepts the following argu
 *   `outputPath` (string, optional): Filesystem path to save the processed image.
     *   If not provided, the image is returned as base64 data in the response.
     *   Example: `/path/to/save/resized_image.webp`
+*   `outputImage` (boolean, optional): Whether to include the base64-encoded image in the output response.
+    *   If not provided, will not include base64 image in response.
+
 
 **Resizing and Dimensions:**
 
@@ -207,7 +210,7 @@ The `resize_image` tool, provided by this MCP server, accepts the following argu
     *   Values: `cover`, `contain`, `fill`, `inside`, `outside`.
     *   Defaults to `contain` if both `width` and `height` are specified but `fit` is not.
 *   `position` (enum, optional): Position to use when `fit` is `cover` or `contain`.
-    *   Values: `centre`, `center`, `north`, `east`, `south`, `west`, `northeast`, `southeast`, `southwest`, `northwest`.
+    *   Values:`top`, `right top`, `right`, `right bottom`, `bottom`, `left bottom`, `left`, `left top`.
 *   `background` (string, optional): Background color to use when `fit` results in empty areas (e.g., for `contain`).
     *   Format: CSS color string (e.g., `#RRGGBB`, `rgba(r,g,b,a)`).
     *   Example: `#FFFFFF`, `rgba(0,0,0,0.5)`
