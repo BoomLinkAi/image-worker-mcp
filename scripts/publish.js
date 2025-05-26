@@ -114,7 +114,7 @@ function commitAndPushPostPublish() {
     const status = execSync('git status --porcelain', { encoding: 'utf8' }).trim();
     if (status) {
       exec(`git commit -m "chore: mark v${version} as published to npm [skip ci]"`);
-      exec('git push origin main');
+      exec('git push origin HEAD:refs/heads/main');
       log('Post-publish changes committed and pushed');
     } else {
       log('No post-publish changes to commit');
