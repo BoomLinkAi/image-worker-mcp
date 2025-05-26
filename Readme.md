@@ -29,6 +29,8 @@ npx @boomlinkai/image-worker-mcp
 - Convert images between formats (JPEG, PNG, WebP, AVIF) or from (HEIC, HEIF)
 - Optimize images for web use
 - Apply basic transformations (rotate, flip, etc.)
+- Upload images to cloud storage (AWS S3, Cloudflare R2)
+- Support for multiple input sources (file path, URL, base64)
 
 ## Usage
 
