@@ -1,30 +1,48 @@
+import { z } from 'zod';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { BaseUploadService, UploadServiceConfig, UploadResult, UploadImageArgs } from './types';
 
-// S3 upload service implementation
+export const S3EnvConfigSchema = z.object({
+  UPLOAD_SERVICE: z.literal('s3').optional(),
+  S3_BUCKET: z.string().min(1, 'S3_BUCKET is required and cannot be empty'),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_REGION: z.string().optional(),
+  S3_ENDPOINT: z.string().url('S3_ENDPOINT must be a valid URL if provided').optional(),
+}).refine(data => (data.AWS_ACCESS_KEY_ID && data.AWS_SECRET_ACCESS_KEY) || (!data.AWS_ACCESS_KEY_ID && !data.AWS_SECRET_ACCESS_KEY), {
+  message: 'If AWS_ACCESS_KEY_ID is provided, AWS_SECRET_ACCESS_KEY must also be provided, and vice-versa.',
+  path: ['AWS_ACCESS_KEY_ID'],
+});
+
+export type ValidatedS3EnvConfig = z.infer<typeof S3EnvConfigSchema>;
+
 export class S3UploadService extends BaseUploadService {
   private s3Client: S3Client;
 
-  constructor(config: UploadServiceConfig) {
-    super(config);
-    this.s3Client = new S3Client({
-      region: this.config.region || 'us-east-1',
-      credentials: {
-        accessKeyId: this.config.apiKey!,
-        secretAccessKey: this.config.apiSecret!,
-      },
-      ...(this.config.endpoint && { endpoint: this.config.endpoint }),
-    });
-  }
+  constructor(validatedEnvConfig: ValidatedS3EnvConfig) {
+    const serviceConfig: UploadServiceConfig = {
+      service: 's3', // Explicitly set
+      bucket: validatedEnvConfig.S3_BUCKET,
+      apiKey: validatedEnvConfig.AWS_ACCESS_KEY_ID,
+      apiSecret: validatedEnvConfig.AWS_SECRET_ACCESS_KEY,
+      region: validatedEnvConfig.S3_REGION,
+      endpoint: validatedEnvConfig.S3_ENDPOINT,
+    };
+    super(serviceConfig);
 
-  validateConfig(): void {
-    if (!this.config.apiKey || !this.config.apiSecret || !this.config.bucket) {
-      throw new McpError(
-        ErrorCode.InvalidParams,
-        'S3 upload service requires apiKey, apiSecret, and bucket configuration'
-      );
+    const s3ClientParams: any = {
+      region: this.config.region || 'us-east-1',
+      ...(this.config.endpoint && { endpoint: this.config.endpoint }),
+    };
+
+    if (this.config.apiKey && this.config.apiSecret) {
+      s3ClientParams.credentials = {
+        accessKeyId: this.config.apiKey,
+        secretAccessKey: this.config.apiSecret,
+      };
     }
+    this.s3Client = new S3Client(s3ClientParams);
   }
 
   async upload(buffer: Buffer, filename: string, args: UploadImageArgs): Promise<UploadResult> {

@@ -3,12 +3,8 @@ import fs from 'fs';
 import { ErrorCode, McpError, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { base64ToBuffer, fetchImageFromUrl, normalizeFilePath } from '../utils';
-import { SUPPORTED_UPLOAD_SERVICES } from '../constants';
 import {
-  UploadService,
-  UploadServiceConfig,
   BaseUploadService,
-  UploadServiceFactory
 } from '../services';
 
 // Re-export the upload service type for external use
@@ -31,11 +27,6 @@ export const uploadImageSchema = {
       description: 'Base64-encoded image data (with or without data URL prefix)',
     })
     .optional(),
-  service: z
-    .enum(SUPPORTED_UPLOAD_SERVICES)
-    .optional()
-    .default('s3')
-    .describe('Upload service to use'),
   filename: z
     .string()
     .optional()
@@ -66,15 +57,13 @@ export const uploadImageSchema = {
 
 type UploadImageArgs = z.infer<z.ZodObject<typeof uploadImageSchema>>;
 
-// Main upload tool class
-class UploadTool {
-  private args: UploadImageArgs;
+export class UploadTool {
+  private args: Partial<UploadImageArgs>;
   private uploadService: BaseUploadService;
 
-  constructor(validatedArgs: UploadImageArgs, config: UploadServiceConfig) {
-    this.args = validatedArgs;
-    this.uploadService = UploadServiceFactory.create(config);
-    this.uploadService.validateConfig();
+  constructor(args: Partial<UploadImageArgs>, uploadService: BaseUploadService) {
+    this.args = args;
+    this.uploadService = uploadService;
   }
 
   private async getInputBuffer(): Promise<{ buffer: Buffer; originalFilename?: string }> {
@@ -179,39 +168,4 @@ class UploadTool {
       };
     }
   }
-}
-
-// Configuration loader from environment variables and command line
-export function loadUploadConfig(service?: UploadService): UploadServiceConfig {
-  const selectedService = service || (process.env.UPLOAD_SERVICE as UploadService) || 's3';
-
-  const config: UploadServiceConfig = {
-    service: selectedService,
-  };
-
-  switch (selectedService) {
-    case 's3':
-      config.apiKey = process.env.AWS_ACCESS_KEY_ID || process.env.S3_ACCESS_KEY;
-      config.apiSecret = process.env.AWS_SECRET_ACCESS_KEY || process.env.S3_SECRET_KEY;
-      config.bucket = process.env.S3_BUCKET;
-      config.region = process.env.S3_REGION || 'us-east-1';
-      config.endpoint = process.env.S3_ENDPOINT;
-      break;
-    case 'cloudflare':
-      config.apiKey = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.CF_ACCESS_KEY;
-      config.apiSecret = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.CF_SECRET_KEY;
-      config.bucket = process.env.CLOUDFLARE_R2_BUCKET || process.env.CF_BUCKET;
-      config.region = process.env.CLOUDFLARE_R2_REGION || 'auto';
-      config.endpoint = process.env.CLOUDFLARE_R2_ENDPOINT || process.env.CF_ENDPOINT;
-      break;
-  }
-
-  return config;
-}
-
-// Main tool function
-export async function uploadImageTool(validatedArgs: UploadImageArgs): Promise<CallToolResult> {
-  const config = loadUploadConfig(validatedArgs.service);
-  const tool = new UploadTool(validatedArgs, config);
-  return tool.exec();
 }

@@ -12,9 +12,9 @@ vi.mock('@aws-sdk/client-s3', () => {
   };
 });
 
-import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
-import { S3UploadService } from '../../src/services/s3';
-import { UploadServiceConfig, UploadImageArgs } from '../../src/services/types';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'; // HeadObjectCommand is not directly used in tests after refactor
+import { S3UploadService, ValidatedS3EnvConfig } from '../../src/services/s3';
+import { UploadImageArgs } from '../../src/services/types';
 
 // Get the mocked constructors
 const MockedS3Client = vi.mocked(S3Client);
@@ -22,7 +22,7 @@ const MockedPutObjectCommand = vi.mocked(PutObjectCommand);
 
 describe('S3UploadService', () => {
   let service: S3UploadService;
-  let mockConfig: UploadServiceConfig;
+  let mockEnvConfig: ValidatedS3EnvConfig;
   let mockBuffer: Buffer;
   let mockArgs: UploadImageArgs;
   let mockSend: ReturnType<typeof vi.fn>;
@@ -30,18 +30,17 @@ describe('S3UploadService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     
-    // Create a fresh mock for the send method
     mockSend = vi.fn();
     MockedS3Client.mockImplementation(() => ({
       send: mockSend,
     }) as any);
     
-    mockConfig = {
-      service: 's3',
-      apiKey: 'test-access-key',
-      apiSecret: 'test-secret-key',
-      bucket: 'test-bucket',
-      region: 'us-east-1',
+    mockEnvConfig = {
+      UPLOAD_SERVICE: 's3',
+      AWS_ACCESS_KEY_ID: 'test-access-key',
+      AWS_SECRET_ACCESS_KEY: 'test-secret-key',
+      S3_BUCKET: 'test-bucket',
+      S3_REGION: 'us-east-1',
     };
 
     mockBuffer = Buffer.from('test image data');
@@ -59,119 +58,98 @@ describe('S3UploadService', () => {
   });
 
   describe('constructor', () => {
-    it('should create S3Client with correct configuration', () => {
-      service = new S3UploadService(mockConfig);
+    it('should create S3Client with mapped configuration from ENV-style input', () => {
+      service = new S3UploadService(mockEnvConfig);
       
       expect(MockedS3Client).toHaveBeenCalledWith({
-        region: 'us-east-1',
+        region: mockEnvConfig.S3_REGION,
         credentials: {
-          accessKeyId: 'test-access-key',
-          secretAccessKey: 'test-secret-key',
+          accessKeyId: mockEnvConfig.AWS_ACCESS_KEY_ID,
+          secretAccessKey: mockEnvConfig.AWS_SECRET_ACCESS_KEY,
         },
       });
     });
 
-    it('should include endpoint if provided', () => {
-      const configWithEndpoint = {
-        ...mockConfig,
-        endpoint: 'https://custom-s3.example.com',
+    it('should include endpoint if provided in ENV-style config', () => {
+      const envConfigWithEndpoint: ValidatedS3EnvConfig = {
+        ...mockEnvConfig,
+        S3_ENDPOINT: 'https://custom-s3.example.com',
       };
       
-      service = new S3UploadService(configWithEndpoint);
+      service = new S3UploadService(envConfigWithEndpoint);
       
       expect(MockedS3Client).toHaveBeenCalledWith({
-        region: 'us-east-1',
+        region: envConfigWithEndpoint.S3_REGION,
         credentials: {
-          accessKeyId: 'test-access-key',
-          secretAccessKey: 'test-secret-key',
+          accessKeyId: envConfigWithEndpoint.AWS_ACCESS_KEY_ID,
+          secretAccessKey: envConfigWithEndpoint.AWS_SECRET_ACCESS_KEY,
         },
         endpoint: 'https://custom-s3.example.com',
       });
     });
 
-    it('should use default region if not provided', () => {
-      const configWithoutRegion = { ...mockConfig };
-      delete configWithoutRegion.region;
+    it('should use default region if S3_REGION not provided in ENV-style config', () => {
+      const envConfigWithoutRegion: ValidatedS3EnvConfig = { 
+        ...mockEnvConfig,
+        S3_REGION: undefined, 
+      };
       
-      service = new S3UploadService(configWithoutRegion);
+      service = new S3UploadService(envConfigWithoutRegion);
       
-      expect(MockedS3Client).toHaveBeenCalledWith({
-        region: 'us-east-1',
+      expect(MockedS3Client).toHaveBeenCalledWith(expect.objectContaining({
+        region: 'us-east-1', 
         credentials: {
-          accessKeyId: 'test-access-key',
-          secretAccessKey: 'test-secret-key',
+          accessKeyId: envConfigWithoutRegion.AWS_ACCESS_KEY_ID,
+          secretAccessKey: envConfigWithoutRegion.AWS_SECRET_ACCESS_KEY,
         },
-      });
-    });
-  });
-
-  describe('validateConfig', () => {
-    it('should pass validation with valid config', () => {
-      service = new S3UploadService(mockConfig);
-      expect(() => service.validateConfig()).not.toThrow();
+      }));
     });
 
-    it('should throw error if apiKey is missing', () => {
-      const invalidConfig = { ...mockConfig };
-      delete invalidConfig.apiKey;
-      
-      service = new S3UploadService(invalidConfig);
-      
-      expect(() => service.validateConfig()).toThrow(McpError);
-      expect(() => service.validateConfig()).toThrow(
-        'S3 upload service requires apiKey, apiSecret, and bucket configuration'
-      );
-    });
-
-    it('should throw error if apiSecret is missing', () => {
-      const invalidConfig = { ...mockConfig };
-      delete invalidConfig.apiSecret;
-      
-      service = new S3UploadService(invalidConfig);
-      
-      expect(() => service.validateConfig()).toThrow(McpError);
-    });
-
-    it('should throw error if bucket is missing', () => {
-      const invalidConfig = { ...mockConfig };
-      delete invalidConfig.bucket;
-      
-      service = new S3UploadService(invalidConfig);
-      
-      expect(() => service.validateConfig()).toThrow(McpError);
+    it('should create S3Client without credentials if AWS keys are not provided in ENV-style config', () => {
+      const envConfigNoKeys: ValidatedS3EnvConfig = {
+        UPLOAD_SERVICE: 's3',
+        S3_BUCKET: 'test-bucket',
+        S3_REGION: 'us-east-1',
+      };
+      service = new S3UploadService(envConfigNoKeys);
+      expect(MockedS3Client.mock.calls.length).toBeGreaterThan(0);
+      const calledWith = MockedS3Client.mock.calls[0][0];
+      expect(calledWith).toBeDefined();
+      if (calledWith) {
+        expect(calledWith.region).toBe('us-east-1');
+        expect(calledWith).not.toHaveProperty('credentials');
+      }
     });
   });
 
   describe('upload', () => {
     beforeEach(() => {
-      service = new S3UploadService(mockConfig);
+      service = new S3UploadService(mockEnvConfig);
     });
 
     it('should successfully upload file without folder', async () => {
-      // Mock HeadObject to throw NotFound (file doesn't exist)
       const notFoundError = new Error('Not Found');
       notFoundError.name = 'NotFound';
       mockSend.mockRejectedValueOnce(notFoundError);
 
-      // Mock successful upload
-      const mockResult = {
+      const mockUploadResult = {
         ETag: '"test-etag"',
         VersionId: 'test-version-id',
       };
-      mockSend.mockResolvedValueOnce(mockResult);
+      mockSend.mockResolvedValueOnce(mockUploadResult);
 
       const result = await service.upload(mockBuffer, 'test.jpg', mockArgs);
 
       expect(result).toEqual({
-        url: 'https://test-bucket.s3.us-east-1.amazonaws.com/test.jpg',
+        url: `https://${mockEnvConfig.S3_BUCKET}.s3.${mockEnvConfig.S3_REGION}.amazonaws.com/test.jpg`,
         filename: 'test.jpg',
         size: mockBuffer.length,
         format: 'jpg',
         service: 's3',
         metadata: {
-          bucket: 'test-bucket',
+          bucket: mockEnvConfig.S3_BUCKET,
           key: 'test.jpg',
-          region: 'us-east-1',
+          region: mockEnvConfig.S3_REGION,
           etag: '"test-etag"',
           versionId: 'test-version-id',
         },
@@ -179,53 +157,49 @@ describe('S3UploadService', () => {
     });
 
     it('should successfully upload file with folder', async () => {
-      // Mock HeadObject to throw NotFound (file doesn't exist)
       const notFoundError = new Error('Not Found');
       notFoundError.name = 'NotFound';
       mockSend.mockRejectedValueOnce(notFoundError);
 
-      // Mock successful upload
-      const mockResult = {
+      const mockUploadResult = {
         ETag: '"test-etag"',
         VersionId: 'test-version-id',
       };
-      mockSend.mockResolvedValueOnce(mockResult);
+      mockSend.mockResolvedValueOnce(mockUploadResult);
 
       const argsWithFolder = { ...mockArgs, folder: 'uploads/2024' };
       const result = await service.upload(mockBuffer, 'test.jpg', argsWithFolder);
 
-      expect(result.url).toBe('https://test-bucket.s3.us-east-1.amazonaws.com/uploads/2024/test.jpg');
+      expect(result.url).toBe(`https://${mockEnvConfig.S3_BUCKET}.s3.${mockEnvConfig.S3_REGION}.amazonaws.com/uploads/2024/test.jpg`);
       expect(result.metadata?.key).toBe('uploads/2024/test.jpg');
     });
 
-    it('should generate custom endpoint URL when endpoint is provided', async () => {
-      const configWithEndpoint = {
-        ...mockConfig,
-        endpoint: 'https://minio.example.com',
+    it('should generate custom endpoint URL when S3_ENDPOINT is provided', async () => {
+      const envConfigWithEndpoint: ValidatedS3EnvConfig = {
+        ...mockEnvConfig,
+        S3_ENDPOINT: 'https://minio.example.com',
       };
-      service = new S3UploadService(configWithEndpoint);
+      service = new S3UploadService(envConfigWithEndpoint);
 
-      // Mock HeadObject to throw NotFound (file doesn't exist)
       const notFoundError = new Error('Not Found');
       notFoundError.name = 'NotFound';
       mockSend.mockRejectedValueOnce(notFoundError);
 
-      const mockResult = { ETag: '"test-etag"' };
-      mockSend.mockResolvedValueOnce(mockResult);
+      const mockUploadResult = { ETag: '"test-etag"' };
+      mockSend.mockResolvedValueOnce(mockUploadResult);
 
       const result = await service.upload(mockBuffer, 'test.jpg', mockArgs);
 
-      expect(result.url).toBe('https://minio.example.com/test-bucket/test.jpg');
+      expect(result.url).toBe(`https://minio.example.com/${mockEnvConfig.S3_BUCKET}/test.jpg`);
     });
 
     it('should handle file extension correctly', async () => {
-      // Mock HeadObject to throw NotFound (file doesn't exist)
       const notFoundError = new Error('Not Found');
       notFoundError.name = 'NotFound';
       mockSend.mockRejectedValueOnce(notFoundError);
 
-      const mockResult = { ETag: '"test-etag"' };
-      mockSend.mockResolvedValueOnce(mockResult);
+      const mockUploadResult = { ETag: '"test-etag"' };
+      mockSend.mockResolvedValueOnce(mockUploadResult);
 
       const result = await service.upload(mockBuffer, 'test.PNG', mockArgs);
 
@@ -233,13 +207,12 @@ describe('S3UploadService', () => {
     });
 
     it('should default to jpg extension if none provided', async () => {
-      // Mock HeadObject to throw NotFound (file doesn't exist)
       const notFoundError = new Error('Not Found');
       notFoundError.name = 'NotFound';
       mockSend.mockRejectedValueOnce(notFoundError);
 
-      const mockResult = { ETag: '"test-etag"' };
-      mockSend.mockResolvedValueOnce(mockResult);
+      const mockUploadResult = { ETag: '"test-etag"' };
+      mockSend.mockResolvedValueOnce(mockUploadResult);
 
       const result = await service.upload(mockBuffer, 'test', mockArgs);
 
@@ -247,13 +220,12 @@ describe('S3UploadService', () => {
     });
 
     it('should set correct content type for different file types', async () => {
-      // Mock HeadObject to throw NotFound (file doesn't exist)
       const notFoundError = new Error('Not Found');
       notFoundError.name = 'NotFound';
       mockSend.mockRejectedValueOnce(notFoundError);
 
-      const mockResult = { ETag: '"test-etag"' };
-      mockSend.mockResolvedValueOnce(mockResult);
+      const mockUploadResult = { ETag: '"test-etag"' };
+      mockSend.mockResolvedValueOnce(mockUploadResult);
 
       await service.upload(mockBuffer, 'test.png', mockArgs);
 
@@ -265,15 +237,13 @@ describe('S3UploadService', () => {
     });
 
     it('should set ACL based on public flag', async () => {
-      // Mock HeadObject to throw NotFound (file doesn't exist) - for first upload
       const notFoundError1 = new Error('Not Found');
       notFoundError1.name = 'NotFound';
       mockSend.mockRejectedValueOnce(notFoundError1);
 
-      const mockResult = { ETag: '"test-etag"' };
-      mockSend.mockResolvedValueOnce(mockResult);
+      const mockUploadResult = { ETag: '"test-etag"' };
+      mockSend.mockResolvedValueOnce(mockUploadResult);
 
-      // Test public upload
       await service.upload(mockBuffer, 'test.jpg', { ...mockArgs, public: true });
       expect(MockedPutObjectCommand).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -283,13 +253,11 @@ describe('S3UploadService', () => {
 
       MockedPutObjectCommand.mockClear();
 
-      // Mock HeadObject to throw NotFound (file doesn't exist) - for second upload
       const notFoundError2 = new Error('Not Found');
       notFoundError2.name = 'NotFound';
       mockSend.mockRejectedValueOnce(notFoundError2);
-      mockSend.mockResolvedValueOnce(mockResult);
+      mockSend.mockResolvedValueOnce(mockUploadResult);
 
-      // Test private upload
       await service.upload(mockBuffer, 'test.jpg', { ...mockArgs, public: false });
       expect(MockedPutObjectCommand).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -299,13 +267,12 @@ describe('S3UploadService', () => {
     });
 
     it('should include metadata in upload command', async () => {
-      // Mock HeadObject to throw NotFound (file doesn't exist)
       const notFoundError = new Error('Not Found');
       notFoundError.name = 'NotFound';
       mockSend.mockRejectedValueOnce(notFoundError);
 
-      const mockResult = { ETag: '"test-etag"' };
-      mockSend.mockResolvedValueOnce(mockResult);
+      const mockUploadResult = { ETag: '"test-etag"' };
+      mockSend.mockResolvedValueOnce(mockUploadResult);
 
       const metadata = { userId: '123', uploadType: 'profile' };
       await service.upload(mockBuffer, 'test.jpg', { ...mockArgs, metadata });
@@ -318,13 +285,12 @@ describe('S3UploadService', () => {
     });
 
     it('should include tags in upload command', async () => {
-      // Mock HeadObject to throw NotFound (file doesn't exist)
       const notFoundError = new Error('Not Found');
       notFoundError.name = 'NotFound';
       mockSend.mockRejectedValueOnce(notFoundError);
 
-      const mockResult = { ETag: '"test-etag"' };
-      mockSend.mockResolvedValueOnce(mockResult);
+      const mockUploadResult = { ETag: '"test-etag"' };
+      mockSend.mockResolvedValueOnce(mockUploadResult);
 
       const tags = ['user-upload', 'profile-pic'];
       await service.upload(mockBuffer, 'test.jpg', { ...mockArgs, tags });
@@ -337,13 +303,12 @@ describe('S3UploadService', () => {
     });
 
     it('should not include tagging if no tags provided', async () => {
-      // Mock HeadObject to throw NotFound (file doesn't exist)
       const notFoundError = new Error('Not Found');
       notFoundError.name = 'NotFound';
       mockSend.mockRejectedValueOnce(notFoundError);
 
-      const mockResult = { ETag: '"test-etag"' };
-      mockSend.mockResolvedValueOnce(mockResult);
+      const mockUploadResult = { ETag: '"test-etag"' };
+      mockSend.mockResolvedValueOnce(mockUploadResult);
 
       await service.upload(mockBuffer, 'test.jpg', { ...mockArgs, tags: undefined });
 
@@ -356,51 +321,52 @@ describe('S3UploadService', () => {
 
     describe('overwrite protection', () => {
       it('should check for existing file when overwrite is false', async () => {
-        // Mock HeadObject to throw NotFound (file doesn't exist)
         const notFoundError = new Error('Not Found');
         notFoundError.name = 'NotFound';
         mockSend.mockRejectedValueOnce(notFoundError);
 
-        // Mock successful upload
-        const mockResult = { ETag: '"test-etag"' };
-        mockSend.mockResolvedValueOnce(mockResult);
+        const mockUploadResult = { ETag: '"test-etag"' };
+        mockSend.mockResolvedValueOnce(mockUploadResult);
 
         await service.upload(mockBuffer, 'test.jpg', { ...mockArgs, overwrite: false });
 
-        expect(mockSend).toHaveBeenCalledTimes(2); // HeadObject + PutObject
+        expect(mockSend).toHaveBeenCalledTimes(2); 
       });
 
       it('should throw error if file exists and overwrite is false', async () => {
-        // Mock HeadObject to succeed (file exists)
-        mockSend.mockResolvedValueOnce({ ContentLength: 1000 });
+        mockSend.mockResolvedValueOnce({ ContentLength: 1000 }); // Simulate file exists
 
         await expect(
           service.upload(mockBuffer, 'test.jpg', { ...mockArgs, overwrite: false })
         ).rejects.toThrow(McpError);
 
+        // Need to reset the mock for the second call if it's part of the same test logic
+        // or ensure the test is structured to only make one call that's expected to throw.
+        // For this test, we'll assume the first call is what we're testing for the throw.
+        // If testing the message specifically, ensure the mock is set up for that call.
+        mockSend.mockReset(); // Reset for the specific message check
+        mockSend.mockResolvedValueOnce({ ContentLength: 1000 }); 
         await expect(
           service.upload(mockBuffer, 'test.jpg', { ...mockArgs, overwrite: false })
         ).rejects.toThrow('File test.jpg already exists. Set overwrite=true to replace it.');
       });
 
       it('should skip existence check when overwrite is true', async () => {
-        const mockResult = { ETag: '"test-etag"' };
-        mockSend.mockResolvedValue(mockResult);
+        const mockUploadResult = { ETag: '"test-etag"' };
+        mockSend.mockResolvedValue(mockUploadResult); // Only one send call expected
 
         await service.upload(mockBuffer, 'test.jpg', { ...mockArgs, overwrite: true });
 
-        expect(mockSend).toHaveBeenCalledTimes(1); // Only PutObject
+        expect(mockSend).toHaveBeenCalledTimes(1); 
       });
 
       it('should handle NoSuchKey error as file not found', async () => {
-        // Mock HeadObject to throw NoSuchKey (file doesn't exist)
         const noSuchKeyError = new Error('No Such Key');
         noSuchKeyError.name = 'NoSuchKey';
         mockSend.mockRejectedValueOnce(noSuchKeyError);
 
-        // Mock successful upload
-        const mockResult = { ETag: '"test-etag"' };
-        mockSend.mockResolvedValueOnce(mockResult);
+        const mockUploadResult = { ETag: '"test-etag"' };
+        mockSend.mockResolvedValueOnce(mockUploadResult);
 
         const result = await service.upload(mockBuffer, 'test.jpg', { ...mockArgs, overwrite: false });
 
@@ -425,10 +391,12 @@ describe('S3UploadService', () => {
 
       it('should preserve McpError instances', async () => {
         const mcpError = new McpError(ErrorCode.InvalidParams, 'Custom MCP error');
-        mockSend.mockRejectedValue(mcpError);
+        // For this test, the error should originate from the HeadObjectCommand or PutObjectCommand
+        // If it's from HeadObject:
+        mockSend.mockRejectedValueOnce(mcpError); 
 
         await expect(
-          service.upload(mockBuffer, 'test.jpg', mockArgs)
+          service.upload(mockBuffer, 'test.jpg', { ...mockArgs, overwrite: false })
         ).rejects.toThrow(mcpError);
       });
     });
@@ -436,11 +404,10 @@ describe('S3UploadService', () => {
 
   describe('getContentType', () => {
     beforeEach(() => {
-      service = new S3UploadService(mockConfig);
+      service = new S3UploadService(mockEnvConfig);
     });
 
     it('should return correct MIME types for supported formats', () => {
-      // Access private method for testing
       const getContentType = (service as any).getContentType.bind(service);
 
       expect(getContentType('jpg')).toBe('image/jpeg');
@@ -462,23 +429,23 @@ describe('S3UploadService', () => {
 
   describe('generateUrl', () => {
     it('should generate standard AWS S3 URL', () => {
-      service = new S3UploadService(mockConfig);
+      service = new S3UploadService(mockEnvConfig);
       const generateUrl = (service as any).generateUrl.bind(service);
 
       const url = generateUrl('test/image.jpg');
-      expect(url).toBe('https://test-bucket.s3.us-east-1.amazonaws.com/test/image.jpg');
+      expect(url).toBe(`https://${mockEnvConfig.S3_BUCKET}.s3.${mockEnvConfig.S3_REGION}.amazonaws.com/test/image.jpg`);
     });
 
-    it('should generate custom endpoint URL', () => {
-      const configWithEndpoint = {
-        ...mockConfig,
-        endpoint: 'https://minio.example.com',
+    it('should generate custom endpoint URL when S3_ENDPOINT is provided', () => {
+      const envConfigWithEndpoint: ValidatedS3EnvConfig = {
+        ...mockEnvConfig,
+        S3_ENDPOINT: 'https://minio.example.com',
       };
-      service = new S3UploadService(configWithEndpoint);
+      service = new S3UploadService(envConfigWithEndpoint);
       const generateUrl = (service as any).generateUrl.bind(service);
 
       const url = generateUrl('test/image.jpg');
-      expect(url).toBe('https://minio.example.com/test-bucket/test/image.jpg');
+      expect(url).toBe(`https://minio.example.com/${mockEnvConfig.S3_BUCKET}/test/image.jpg`);
     });
   });
 });

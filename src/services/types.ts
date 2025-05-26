@@ -53,5 +53,4 @@ export abstract class BaseUploadService {
   }
 
   abstract upload(buffer: Buffer, filename: string, args: UploadImageArgs): Promise<UploadResult>;
-  abstract validateConfig(): void;
 }

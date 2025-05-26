@@ -273,16 +273,16 @@ The `upload_image` tool allows you to upload processed images to cloud storage s
 
 ```bash
 # AWS S3
-export AWS_ACCESS_KEY_ID=your-access-key
-export AWS_SECRET_ACCESS_KEY=your-secret-key
-export S3_BUCKET=your-bucket-name
-export S3_REGION=us-east-1
-
-# Or alternative naming
-export S3_ACCESS_KEY=your-access-key
-export S3_SECRET_KEY=your-secret-key
-export S3_ENDPOINT=https://custom-s3-endpoint.com  # Optional for S3-compatible services
+# Standard AWS credentials (recommended)
+export AWS_ACCESS_KEY_ID="your-aws-access-key-id"
+export AWS_SECRET_ACCESS_KEY="your-aws-secret-access-key"
+export S3_BUCKET="your-s3-bucket-name"
+export S3_REGION="your-s3-bucket-region" # e.g., us-east-1
+export S3_ENDPOINT="https://your-s3-compatible-endpoint.com" # Optional: for S3-compatible services like MinIO
 ```
+
+**Note on S3 Credentials:**
+If `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are not provided, the SDK will attempt to use credentials from the default AWS credential chain (e.g., `~/.aws/credentials`, IAM roles).
 
 **Environment Variables for Cloudflare R2:**
 
