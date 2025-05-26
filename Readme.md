@@ -1,6 +1,6 @@
 # @boomlinkai/image-worker-mcp
 
-A command-line tool that provides an MCP server for image resizing.
+MCP server for image processing and cloud storage upload.
 
 ## Installation
 
@@ -173,6 +173,8 @@ Add to your Roo Code settings.json:
 
 ## Supported Options
 
+### `resize_image` tool
+
 The `resize_image` tool, provided by this MCP server, accepts the following arguments. These are based on the `sharp` image processing library.
 
 **Input Image (at least one required):**
@@ -230,6 +232,100 @@ The `resize_image` tool, provided by this MCP server, accepts the following argu
 *   `negate` (boolean, optional): Produce a negative of the image.
 *   `normalize` (boolean, optional): Enhance image contrast by stretching its intensity levels (histogram normalization).
 *   `threshold` (number, optional): Apply a threshold to the image, converting it to black and white based on luminance. Value between 0 and 255.
+
+### `upload_image` tool
+
+The `upload_image` tool allows you to upload processed images to cloud storage services like AWS S3 or Cloudflare R2.
+
+**Input Image (at least one required):**
+
+*   `imagePath` (string, optional): Filesystem path to the input image.
+    *   Example: `/path/to/your/image.jpg`
+*   `imageUrl` (string, optional): URL of the input image to download and upload.
+    *   Example: `https://example.com/image.png`
+*   `base64Image` (string, optional): Base64-encoded image data. Can include a data URL prefix or be raw base64.
+    *   Example: `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD...`
+
+**Upload Configuration:**
+
+*   `service` (enum, optional): Upload service to use.
+    *   Supported values: `s3`, `cloudflare`.
+    *   Defaults to `s3` or the value of `UPLOAD_SERVICE` environment variable.
+*   `filename` (string, optional): Custom filename for the uploaded image (without extension).
+    *   If not provided, uses the original filename or generates a unique one.
+    *   Example: `my-custom-image`
+*   `folder` (string, optional): Folder/directory to upload to (service-specific).
+    *   Example: `uploads/2024/january`
+*   `public` (boolean, optional): Whether the uploaded image should be publicly accessible.
+    *   Defaults to `true`.
+    *   Note: For Cloudflare R2, public access is controlled via bucket settings.
+*   `overwrite` (boolean, optional): Whether to overwrite existing files with the same name.
+    *   Defaults to `false`.
+*   `tags` (array of strings, optional): Tags to associate with the uploaded image.
+    *   Example: `["profile-pic", "user-upload"]`
+    *   Note: Not supported by Cloudflare R2.
+*   `metadata` (object, optional): Additional metadata to store with the image.
+    *   Example: `{"userId": "123", "uploadType": "profile"}`
+
+**Environment Variables for S3:**
+
+```bash
+# AWS S3
+export AWS_ACCESS_KEY_ID=your-access-key
+export AWS_SECRET_ACCESS_KEY=your-secret-key
+export S3_BUCKET=your-bucket-name
+export S3_REGION=us-east-1
+
+# Or alternative naming
+export S3_ACCESS_KEY=your-access-key
+export S3_SECRET_KEY=your-secret-key
+export S3_ENDPOINT=https://custom-s3-endpoint.com  # Optional for S3-compatible services
+```
+
+**Environment Variables for Cloudflare R2:**
+
+```bash
+export CLOUDFLARE_R2_ACCESS_KEY_ID=your-access-key
+export CLOUDFLARE_R2_SECRET_ACCESS_KEY=your-secret-key
+export CLOUDFLARE_R2_BUCKET=your-bucket-name
+export CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
+export CLOUDFLARE_R2_REGION=auto  # Optional, defaults to 'auto'
+
+# Or alternative naming
+export CF_ACCESS_KEY=your-access-key
+export CF_SECRET_KEY=your-secret-key
+export CF_BUCKET=your-bucket-name
+export CF_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
+```
+
+**Set default service:**
+
+```bash
+export UPLOAD_SERVICE=s3        # or 'cloudflare'
+```
+
+**Features:**
+
+Both services support:
+- ✅ File upload from local path, URL, or base64 data
+- ✅ Custom filename and folder organization
+- ✅ Overwrite protection
+- ✅ Metadata and tags (where supported)
+- ✅ Automatic content-type detection
+- ✅ Error handling and validation
+
+**Service-Specific Notes:**
+
+*S3 Service:*
+- Supports ACL settings (public-read/private)
+- Supports object tagging
+- Works with any S3-compatible service (MinIO, DigitalOcean Spaces, etc.)
+
+*Cloudflare R2 Service:*
+- Uses S3-compatible API
+- Public access controlled via bucket settings or custom domains
+- Does not support ACL (use bucket-level permissions instead)
+- Requires endpoint URL configuration
 
 ## Requirements
 
