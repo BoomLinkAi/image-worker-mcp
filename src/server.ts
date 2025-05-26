@@ -4,7 +4,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { VERSION } from './version';
 import { resizeImageSchema, resizeImageTool } from './tools/sharp.js';
 import { uploadImageSchema, UploadTool } from './tools/upload.js';
-import { BaseUploadService, loadUploadConfig, UploadImageArgs, UploadServiceFactory } from './services';
+import { BaseUploadService, UploadImageArgs, UploadServiceFactory } from './services';
 
 class ImageWorkerMcpServer {
   private server: McpServer;
@@ -15,8 +15,7 @@ class ImageWorkerMcpServer {
       name: 'image-worker-mcp-server',
       version: VERSION,
     });
-    const config = loadUploadConfig();
-    this.uploadService = UploadServiceFactory.create(config);
+    this.uploadService = UploadServiceFactory.create();
 
     this.setupToolHandlers();
     process.on('SIGINT', async () => {

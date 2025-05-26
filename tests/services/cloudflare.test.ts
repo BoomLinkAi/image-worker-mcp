@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 
-// Mock AWS SDK with factory function
 vi.mock('@aws-sdk/client-s3', () => {
   return {
     S3Client: vi.fn().mockImplementation(() => ({
@@ -12,9 +11,9 @@ vi.mock('@aws-sdk/client-s3', () => {
   };
 });
 
-import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
-import { CloudflareUploadService } from '../../src/services/cloudflare';
-import { UploadServiceConfig, UploadImageArgs } from '../../src/services/types';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { CloudflareUploadService, ValidatedCloudflareEnvConfig } from '../../src/services/cloudflare';
+import { UploadImageArgs } from '../../src/services/types';
 
 // Get the mocked constructors
 const MockedS3Client = vi.mocked(S3Client);
@@ -22,7 +21,7 @@ const MockedPutObjectCommand = vi.mocked(PutObjectCommand);
 
 describe('CloudflareUploadService', () => {
   let service: CloudflareUploadService;
-  let mockConfig: UploadServiceConfig;
+  let mockValidatedConfig: ValidatedCloudflareEnvConfig;
   let mockBuffer: Buffer;
   let mockArgs: UploadImageArgs;
   let mockSend: ReturnType<typeof vi.fn>;
@@ -30,19 +29,17 @@ describe('CloudflareUploadService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     
-    // Create a fresh mock for the send method
     mockSend = vi.fn();
     MockedS3Client.mockImplementation(() => ({
       send: mockSend,
     }) as any);
     
-    mockConfig = {
-      service: 'cloudflare',
-      apiKey: 'test-access-key',
-      apiSecret: 'test-secret-key',
-      bucket: 'test-bucket',
-      region: 'auto',
-      endpoint: 'https://test-account.r2.cloudflarestorage.com',
+    mockValidatedConfig = {
+      CLOUDFLARE_R2_BUCKET: 'test-bucket',
+      CLOUDFLARE_R2_ACCESS_KEY_ID: 'test-access-key',
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: 'test-secret-key',
+      CLOUDFLARE_R2_ENDPOINT: 'https://test-account.r2.cloudflarestorage.com',
+      CLOUDFLARE_R2_REGION: 'auto',
     };
 
     mockBuffer = Buffer.from('test image data');
@@ -61,7 +58,7 @@ describe('CloudflareUploadService', () => {
 
   describe('constructor', () => {
     it('should create S3Client with correct Cloudflare R2 configuration', () => {
-      service = new CloudflareUploadService(mockConfig);
+      service = new CloudflareUploadService(mockValidatedConfig);
       
       expect(MockedS3Client).toHaveBeenCalledWith({
         region: 'auto',
@@ -75,80 +72,26 @@ describe('CloudflareUploadService', () => {
     });
 
     it('should use default region if not provided', () => {
-      const configWithoutRegion = { ...mockConfig };
-      delete configWithoutRegion.region;
+      const configWithoutRegion = { ...mockValidatedConfig };
+      delete configWithoutRegion.CLOUDFLARE_R2_REGION;
       
       service = new CloudflareUploadService(configWithoutRegion);
       
       expect(MockedS3Client).toHaveBeenCalledWith({
-        region: 'auto',
+        region: 'auto', // Defaulted by the service constructor
         credentials: {
-          accessKeyId: 'test-access-key',
-          secretAccessKey: 'test-secret-key',
+          accessKeyId: mockValidatedConfig.CLOUDFLARE_R2_ACCESS_KEY_ID,
+          secretAccessKey: mockValidatedConfig.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
         },
-        endpoint: 'https://test-account.r2.cloudflarestorage.com',
+        endpoint: mockValidatedConfig.CLOUDFLARE_R2_ENDPOINT,
         forcePathStyle: true,
       });
-    });
-
-    it('should throw error if endpoint is missing', () => {
-      const configWithoutEndpoint = { ...mockConfig };
-      delete configWithoutEndpoint.endpoint;
-      
-      expect(() => new CloudflareUploadService(configWithoutEndpoint)).toThrow(McpError);
-      expect(() => new CloudflareUploadService(configWithoutEndpoint)).toThrow(
-        'Cloudflare R2 requires an endpoint URL'
-      );
-    });
-  });
-
-  describe('validateConfig', () => {
-    it('should pass validation with valid config', () => {
-      service = new CloudflareUploadService(mockConfig);
-      expect(() => service.validateConfig()).not.toThrow();
-    });
-
-    it('should throw error if apiKey is missing', () => {
-      const invalidConfig = { ...mockConfig };
-      delete invalidConfig.apiKey;
-      
-      service = new CloudflareUploadService(invalidConfig);
-      
-      expect(() => service.validateConfig()).toThrow(McpError);
-      expect(() => service.validateConfig()).toThrow(
-        'Cloudflare R2 upload service requires apiKey, apiSecret, bucket, and endpoint configuration'
-      );
-    });
-
-    it('should throw error if apiSecret is missing', () => {
-      const invalidConfig = { ...mockConfig };
-      delete invalidConfig.apiSecret;
-      
-      service = new CloudflareUploadService(invalidConfig);
-      
-      expect(() => service.validateConfig()).toThrow(McpError);
-    });
-
-    it('should throw error if bucket is missing', () => {
-      const invalidConfig = { ...mockConfig };
-      delete invalidConfig.bucket;
-      
-      service = new CloudflareUploadService(invalidConfig);
-      
-      expect(() => service.validateConfig()).toThrow(McpError);
-    });
-
-    it('should throw error if endpoint is missing', () => {
-      const invalidConfig = { ...mockConfig };
-      delete invalidConfig.endpoint;
-      
-      expect(() => new CloudflareUploadService(invalidConfig)).toThrow(McpError);
     });
   });
 
   describe('upload', () => {
     beforeEach(() => {
-      service = new CloudflareUploadService(mockConfig);
+      service = new CloudflareUploadService(mockValidatedConfig);
     });
 
     it('should successfully upload file without folder', async () => {
@@ -167,15 +110,15 @@ describe('CloudflareUploadService', () => {
       const result = await service.upload(mockBuffer, 'test.jpg', mockArgs);
 
       expect(result).toEqual({
-        url: 'https://test-account.r2.cloudflarestorage.com/test-bucket/test.jpg',
+        url: `https://test-account.r2.cloudflarestorage.com/${mockValidatedConfig.CLOUDFLARE_R2_BUCKET}/test.jpg`,
         filename: 'test.jpg',
         size: mockBuffer.length,
         format: 'jpg',
         service: 'cloudflare',
         metadata: {
-          bucket: 'test-bucket',
+          bucket: mockValidatedConfig.CLOUDFLARE_R2_BUCKET,
           key: 'test.jpg',
-          endpoint: 'https://test-account.r2.cloudflarestorage.com',
+          endpoint: mockValidatedConfig.CLOUDFLARE_R2_ENDPOINT,
           etag: '"test-etag"',
           versionId: 'test-version-id',
         },
@@ -198,16 +141,14 @@ describe('CloudflareUploadService', () => {
       const argsWithFolder = { ...mockArgs, folder: 'uploads/2024' };
       const result = await service.upload(mockBuffer, 'test.jpg', argsWithFolder);
 
-      expect(result.url).toBe('https://test-account.r2.cloudflarestorage.com/test-bucket/uploads/2024/test.jpg');
+      expect(result.url).toBe(`${mockValidatedConfig.CLOUDFLARE_R2_ENDPOINT}/${mockValidatedConfig.CLOUDFLARE_R2_BUCKET}/uploads/2024/test.jpg`);
       expect(result.metadata?.key).toBe('uploads/2024/test.jpg');
     });
 
     it('should generate custom domain URL when baseUrl is provided', async () => {
-      const configWithBaseUrl = {
-        ...mockConfig,
-        baseUrl: 'https://cdn.example.com',
-      };
-      service = new CloudflareUploadService(configWithBaseUrl);
+      const tempService = new CloudflareUploadService(mockValidatedConfig);
+      (tempService as any).config.baseUrl = 'https://cdn.example.com';
+
 
       // Mock HeadObject to throw NotFound (file doesn't exist)
       const notFoundError = new Error('Not Found');
@@ -217,7 +158,7 @@ describe('CloudflareUploadService', () => {
       const mockResult = { ETag: '"test-etag"' };
       mockSend.mockResolvedValueOnce(mockResult);
 
-      const result = await service.upload(mockBuffer, 'test.jpg', mockArgs);
+      const result = await tempService.upload(mockBuffer, 'test.jpg', mockArgs);
 
       expect(result.url).toBe('https://cdn.example.com/test.jpg');
     });
@@ -407,7 +348,7 @@ describe('CloudflareUploadService', () => {
 
   describe('getContentType', () => {
     beforeEach(() => {
-      service = new CloudflareUploadService(mockConfig);
+      service = new CloudflareUploadService(mockValidatedConfig);
     });
 
     it('should return correct MIME types for supported formats', () => {
@@ -433,37 +374,35 @@ describe('CloudflareUploadService', () => {
 
   describe('generateUrl', () => {
     it('should generate R2 endpoint URL by default', () => {
-      service = new CloudflareUploadService(mockConfig);
+      service = new CloudflareUploadService(mockValidatedConfig);
       const generateUrl = (service as any).generateUrl.bind(service);
 
       const url = generateUrl('test/image.jpg');
-      expect(url).toBe('https://test-account.r2.cloudflarestorage.com/test-bucket/test/image.jpg');
+      expect(url).toBe(`${mockValidatedConfig.CLOUDFLARE_R2_ENDPOINT}/${mockValidatedConfig.CLOUDFLARE_R2_BUCKET}/test/image.jpg`);
     });
 
     it('should generate custom domain URL when baseUrl is provided', () => {
-      const configWithBaseUrl = {
-        ...mockConfig,
-        baseUrl: 'https://cdn.example.com',
-      };
-      service = new CloudflareUploadService(configWithBaseUrl);
-      const generateUrl = (service as any).generateUrl.bind(service);
+      // Similar to the upload test, this requires setting internal config.baseUrl
+      const serviceWithBaseUrl = new CloudflareUploadService(mockValidatedConfig);
+      (serviceWithBaseUrl as any).config.baseUrl = 'https://cdn.example.com';
+      const generateUrl = (serviceWithBaseUrl as any).generateUrl.bind(serviceWithBaseUrl);
 
       const url = generateUrl('test/image.jpg');
       expect(url).toBe('https://cdn.example.com/test/image.jpg');
     });
 
     it('should handle keys without folders', () => {
-      service = new CloudflareUploadService(mockConfig);
+      service = new CloudflareUploadService(mockValidatedConfig);
       const generateUrl = (service as any).generateUrl.bind(service);
 
       const url = generateUrl('image.jpg');
-      expect(url).toBe('https://test-account.r2.cloudflarestorage.com/test-bucket/image.jpg');
+      expect(url).toBe(`${mockValidatedConfig.CLOUDFLARE_R2_ENDPOINT}/${mockValidatedConfig.CLOUDFLARE_R2_BUCKET}/image.jpg`);
     });
   });
 
   describe('Cloudflare R2 specific features', () => {
     beforeEach(() => {
-      service = new CloudflareUploadService(mockConfig);
+      service = new CloudflareUploadService(mockValidatedConfig);
     });
 
     it('should always use forcePathStyle for R2 compatibility', () => {
@@ -475,24 +414,15 @@ describe('CloudflareUploadService', () => {
     });
 
     it('should use auto region by default for R2', () => {
-      const configWithoutRegion = { ...mockConfig };
-      delete configWithoutRegion.region;
+      const envConfigWithoutRegion = { ...mockValidatedConfig };
+      delete envConfigWithoutRegion.CLOUDFLARE_R2_REGION;
       
-      service = new CloudflareUploadService(configWithoutRegion);
+      service = new CloudflareUploadService(envConfigWithoutRegion);
       
       expect(MockedS3Client).toHaveBeenCalledWith(
         expect.objectContaining({
           region: 'auto',
         })
-      );
-    });
-
-    it('should require endpoint in constructor', () => {
-      const configWithoutEndpoint = { ...mockConfig };
-      delete configWithoutEndpoint.endpoint;
-      
-      expect(() => new CloudflareUploadService(configWithoutEndpoint)).toThrow(
-        'Cloudflare R2 requires an endpoint URL'
       );
     });
   });

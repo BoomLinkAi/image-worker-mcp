@@ -292,12 +292,6 @@ export CLOUDFLARE_R2_SECRET_ACCESS_KEY=your-secret-key
 export CLOUDFLARE_R2_BUCKET=your-bucket-name
 export CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
 export CLOUDFLARE_R2_REGION=auto  # Optional, defaults to 'auto'
-
-# Or alternative naming
-export CF_ACCESS_KEY=your-access-key
-export CF_SECRET_KEY=your-secret-key
-export CF_BUCKET=your-bucket-name
-export CF_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
 ```
 
 **Set default service:**

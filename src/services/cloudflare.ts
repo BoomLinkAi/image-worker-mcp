@@ -1,39 +1,42 @@
+import { z } from 'zod';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { BaseUploadService, UploadServiceConfig, UploadResult, UploadImageArgs } from './types';
+
+export const CloudflareEnvConfigSchema = z.object({
+  UPLOAD_SERVICE: z.literal('cloudflare').optional().default('cloudflare'),
+  CLOUDFLARE_R2_BUCKET: z.string().min(1, 'CLOUDFLARE_R2_BUCKET is required'),
+  CLOUDFLARE_R2_ACCESS_KEY_ID: z.string().min(1, 'CLOUDFLARE_R2_ACCESS_KEY_ID is required'),
+  CLOUDFLARE_R2_SECRET_ACCESS_KEY: z.string().min(1, 'CLOUDFLARE_R2_SECRET_ACCESS_KEY is required'),
+  CLOUDFLARE_R2_REGION: z.string().optional(),
+  CLOUDFLARE_R2_ENDPOINT: z.string().url('CLOUDFLARE_R2_ENDPOINT must be a valid URL'),
+});
+
+export type ValidatedCloudflareEnvConfig = z.infer<typeof CloudflareEnvConfigSchema>;
 
 // Cloudflare R2 upload service implementation
 export class CloudflareUploadService extends BaseUploadService {
   private s3Client: S3Client;
 
-  constructor(config: UploadServiceConfig) {
-    super(config);
-    
-    if (!config.endpoint) {
-      throw new McpError(
-        ErrorCode.InvalidParams,
-        'Cloudflare R2 requires an endpoint URL'
-      );
-    }
-
+  constructor(validatedEnvConfig: ValidatedCloudflareEnvConfig) {
+    const serviceConfig: UploadServiceConfig = {
+      service: 'cloudflare', // Explicitly set
+      bucket: validatedEnvConfig.CLOUDFLARE_R2_BUCKET,
+      apiKey: validatedEnvConfig.CLOUDFLARE_R2_ACCESS_KEY_ID,
+      apiSecret: validatedEnvConfig.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+      region: validatedEnvConfig.CLOUDFLARE_R2_REGION || 'auto',
+      endpoint: validatedEnvConfig.CLOUDFLARE_R2_ENDPOINT,
+    };
+    super(serviceConfig);
     this.s3Client = new S3Client({
-      region: this.config.region || 'auto',
+      region: this.config.region,
       credentials: {
         accessKeyId: this.config.apiKey!,
         secretAccessKey: this.config.apiSecret!,
       },
-      endpoint: this.config.endpoint,
-      forcePathStyle: true, // Required for R2
+      endpoint: this.config.endpoint!,
+      forcePathStyle: true,
     });
-  }
-
-  validateConfig(): void {
-    if (!this.config.apiKey || !this.config.apiSecret || !this.config.bucket || !this.config.endpoint) {
-      throw new McpError(
-        ErrorCode.InvalidParams,
-        'Cloudflare R2 upload service requires apiKey, apiSecret, bucket, and endpoint configuration'
-      );
-    }
   }
 
   async upload(buffer: Buffer, filename: string, args: UploadImageArgs): Promise<UploadResult> {

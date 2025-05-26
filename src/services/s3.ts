@@ -4,7 +4,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { BaseUploadService, UploadServiceConfig, UploadResult, UploadImageArgs } from './types';
 
 export const S3EnvConfigSchema = z.object({
-  UPLOAD_SERVICE: z.literal('s3').optional(),
+  UPLOAD_SERVICE: z.literal('s3').optional().default('s3'),
   S3_BUCKET: z.string().min(1, 'S3_BUCKET is required and cannot be empty'),
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
