@@ -12,7 +12,7 @@ vi.mock('@aws-sdk/client-s3', () => {
 });
 
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { CloudflareUploadService, ValidatedCloudflareEnvConfig } from '../../src/services/cloudflare';
+import { CloudflareEnvConfigSchema, CloudflareUploadService, ValidatedCloudflareEnvConfig } from '../../src/services/cloudflare';
 import { UploadImageArgs } from '../../src/services/types';
 
 // Get the mocked constructors
@@ -34,13 +34,13 @@ describe('CloudflareUploadService', () => {
       send: mockSend,
     }) as any);
     
-    mockValidatedConfig = {
+    mockValidatedConfig = CloudflareEnvConfigSchema.parse({
       CLOUDFLARE_R2_BUCKET: 'test-bucket',
       CLOUDFLARE_R2_ACCESS_KEY_ID: 'test-access-key',
       CLOUDFLARE_R2_SECRET_ACCESS_KEY: 'test-secret-key',
       CLOUDFLARE_R2_ENDPOINT: 'https://test-account.r2.cloudflarestorage.com',
       CLOUDFLARE_R2_REGION: 'auto',
-    };
+    });
 
     mockBuffer = Buffer.from('test image data');
     
