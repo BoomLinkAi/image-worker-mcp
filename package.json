@@ -25,7 +25,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "prepare": "husky",
-    "commit": "cz"
+    "commit": "cz",
+    "release:prepare": "node scripts/prepare-release.js",
+    "release:publish": "node scripts/publish.js",
+    "version:patch": "node scripts/update-version.js patch",
+    "version:minor": "node scripts/update-version.js minor",
+    "version:major": "node scripts/update-version.js major"
   },
   "config": {
     "commitizen": {
@@ -33,6 +38,7 @@
     }
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.817.0",
     "@modelcontextprotocol/sdk": "1.11.4",
     "chalk": "5.3.0",
     "commander": "12.0.0",
@@ -50,6 +56,7 @@
     "@tsconfig/node20": "^20.1.4",
     "@types/node": "20.10.5",
     "commitizen": "^4.3.1",
+    "conventional-changelog": "^7.0.2",
     "cz-conventional-changelog": "^3.3.0",
     "eslint": "9.25.1",
     "husky": "^9.1.7",

@@ -1,9 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { resizeImageTool, resizeImageSchema } from '../../src/tools/sharp';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
-import type { Sharp } from 'sharp';
 import { z } from 'zod';
-import fsActual from 'fs'; // Import actual fs for reading test file
 
 // Mock dependencies
 vi.mock('fs', () => ({
