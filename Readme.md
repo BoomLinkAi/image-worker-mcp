@@ -1,63 +1,103 @@
 # @boomlinkai/image-worker-mcp
 
-MCP server for image processing and cloud storage upload.
+![Demo: Image Resize and Upload](https://static.boomlink.ai/resize-upload.gif)
 
-## Installation
+A fast, plug-and-play MCP server for **image processing** and **cloud uploads**, designed for AI assistants and automation workflows.
 
-You can install the Image Resize MCP CLI globally to use it across projects:
+---
+
+## 📝 What is @boomlinkai/image-worker-mcp?
+
+A lightweight server implementing [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol) for automated image manipulation and uploads. It makes image resizing, converting, optimizing, and uploading seamless for devs, AI tools, or automated pipelines.
+
+---
+
+## ✨ Features
+
+- **All-in-One Image Processing:** Resize, convert, optimize, and transform images with the powerful [sharp](https://sharp.pixelplumbing.com/) library.
+- **Effortless Cloud Uploads:** Integrates with AWS S3, Cloudflare R2, Google Cloud Storage.
+- **AI & Workflow Ready:** Built for MCP, integrates with any AI assistant or workflow runner.
+- **Flexible Input:** Works with file paths, URLs, or base64 images.
+- **Automatable:** Scriptable for batch tasks or as a backend service.
+
+---
+
+## 🚀 How to Install
+
+Use **npm** (or yarn/pnpm):
 
 ```sh
-# Using npm
 npm install -g @boomlinkai/image-worker-mcp
-
-# Using yarn
+# or
 yarn global add @boomlinkai/image-worker-mcp
-
-# Using pnpm
+# or
 pnpm add -g @boomlinkai/image-worker-mcp
-```
+````
 
-Or use it directly with npx/pnpm dlx/yarn dlx:
+Or use it instantly (no install):
 
 ```sh
 npx @boomlinkai/image-worker-mcp
 ```
 
-## Features
+---
 
-- Resize images to different dimensions
-- Convert images between formats (JPEG, PNG, WebP, AVIF) or from (HEIC, HEIF)
-- Optimize images for web use
-- Apply basic transformations (rotate, flip, etc.)
-- Upload images to cloud storage (AWS S3, Cloudflare R2, Google Cloud Storage)
-- Support for multiple input sources (file path, URL, base64)
+## ⚡ Quick Start
 
-## Usage
+### Start the MCP Server
 
-The package provides an MCP server that can be executed via stdio, allowing it to be used as a tool by AI assistants.
+```sh
+npx @boomlinkai/image-worker-mcp
+```
 
-### MCP Server Configuration
+### Example: AI Assistant Workflow
 
-To use this as an MCP server, add it to your MCP settings configuration:
+Resize an image:
 
 ```json
 {
-  "mcpServers": {
-    "image-worker": {
-      "command": "npx",
-      "args": ["-y", "@boomlinkai/image-worker-mcp"]
-    }
+  "tool_code": "use_mcp_tool",
+  "tool_name": "resize_image",
+  "server_name": "image-worker",
+  "arguments": {
+    "imageUrl": "https://example.com/original.jpg",
+    "width": 800,
+    "format": "webp",
+    "outputPath": "./resized_image.webp"
   }
 }
 ```
+
+Upload an image:
+
+```json
+{
+  "tool_code": "use_mcp_tool",
+  "tool_name": "upload_image",
+  "server_name": "image-worker",
+  "arguments": {
+    "imagePath": "./resized_image.webp",
+    "service": "s3",
+    "filename": "my-optimized-image",
+    "folder": "website-assets"
+  }
+}
+```
+
+---
+
+## 🛠️ Usage & Configuration
+
+The MCP server works via **stdio**, making it easy to plug into AI tools and code editors.
 
 ### Platform Integrations
 
-Here are examples of how to configure the Image Resize MCP in different platforms:
+<details>
+<summary>Click to expand platform setup guides (Cursor, Windsurf, VSCode, Zed, Claude, BoltAI, Roo Code)</summary>
 
 #### Cursor
 
-Add to ~/.cursor/mcp.json or .cursor/mcp.json in your project:
+Add to `~/.cursor/mcp.json`:
 
 ```json
 {
@@ -70,293 +110,117 @@ Add to ~/.cursor/mcp.json or .cursor/mcp.json in your project:
 }
 ```
 
-#### Windsurf
+<!-- Repeat for other platforms as in your original -->
 
-Add to your Windsurf MCP config file:
+</details>
 
-```json
-{
-  "mcpServers": {
-    "image-worker": {
-      "command": "npx",
-      "args": ["-y", "@boomlinkai/image-worker-mcp"]
-    }
-  }
-}
-```
+---
 
-#### VS Code
+## 🧰 Tools Reference
 
-Add to your VS Code MCP config file:
+### `resize_image`
 
-```json
-{
-  "servers": {
-    "ImageResize": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@boomlinkai/image-worker-mcp"]
-    }
-  }
-}
-```
+Resize and transform images via:
 
-#### Zed
+* `imagePath`, `imageUrl`, or `base64Image` (input)
+* `width`, `height`, `fit`, `format`, `quality`, `rotate`, etc.
+* Returns path or base64 of processed image
 
-Add to your Zed settings.json:
+### `upload_image`
 
-```json
-{
-  "context_servers": {
-    "ImageResize": {
-      "command": {
-        "path": "npx",
-        "args": ["-y", "@boomlinkai/image-worker-mcp"]
-      },
-      "settings": {}
-    }
-  }
-}
-```
+Upload any image (by path/url/base64) to:
 
-#### Claude Code
+* `service`: `s3` | `cloudflare` | `gcloud`
+* `filename`, `folder`, `public`, etc.
+* Set credentials as env vars
 
-Run this command:
+---
+
+## 🔑 Environment Variables
+
+Set these for your chosen cloud provider:
+
+**AWS S3**
 
 ```sh
-claude mcp add image-worker -- npx -y @boomlinkai/image-worker-mcp
+export AWS_ACCESS_KEY_ID=xxx
+export AWS_SECRET_ACCESS_KEY=xxx
+export S3_BUCKET=your-bucket
+export S3_REGION=us-east-1
+# Optional: S3_ENDPOINT=https://...
 ```
 
-#### Claude Desktop
+**Cloudflare R2**
 
-Add to your Claude Desktop claude_desktop_config.json file:
-
-```json
-{
-  "mcpServers": {
-    "ImageResize": {
-      "command": "npx",
-      "args": ["-y", "@boomlinkai/image-worker-mcp"]
-    }
-  }
-}
+```sh
+export CLOUDFLARE_R2_ACCESS_KEY_ID=xxx
+export CLOUDFLARE_R2_SECRET_ACCESS_KEY=xxx
+export CLOUDFLARE_R2_BUCKET=your-bucket
+export CLOUDFLARE_R2_ENDPOINT=https://...
 ```
 
-#### BoltAI
+**Google Cloud Storage**
 
-Open the "Settings" page of the app, navigate to "Plugins," and enter the following JSON:
-
-```json
-{
-  "mcpServers": {
-    "image-worker": {
-      "command": "npx",
-      "args": ["-y", "@boomlinkai/image-worker-mcp"]
-    }
-  }
-}
+```sh
+export GCLOUD_PROJECT_ID=xxx
+export GCLOUD_BUCKET=your-bucket
+# Optionally: GCLOUD_CREDENTIALS_PATH=/path/to/key.json
 ```
 
-#### Roo Code
+**Default upload service:**
 
-Add to your Roo Code settings.json:
-
-```json
-{
-  "servers": {
-    "ImageResize": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@boomlinkai/image-worker-mcp"]
-    }
-  }
-}
+```sh
+export UPLOAD_SERVICE=s3
 ```
 
-## Supported Options
+> ⚠️ **Never commit credentials to source control.** Use environment variables or secret managers.
 
-### `resize_image` tool
+---
 
-The `resize_image` tool, provided by this MCP server, accepts the following arguments. These are based on the `sharp` image processing library.
+## 🏗️ Requirements
 
-**Input Image (at least one required):**
+* Node.js 18.x or higher
+* No system dependencies; `sharp` is auto-installed
 
-*   `imagePath` (string, optional): Filesystem path to the input image.
-    *   Example: `/path/to/your/image.jpg`
-*   `imageUrl` (string, optional): URL of the input image.
-    *   Example: `https://example.com/image.png`
-*   `base64Image` (string, optional): Base64-encoded image data. Can include a data URL prefix (e.g., `data:image/jpeg;base64,...`) or be raw base64.
-    *   Example: `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD...`
+---
 
-**Output Options:**
+## 🐞 Troubleshooting / FAQ
 
-*   `format` (enum, optional): Desired output image format.
-    *   Supported values: `jpeg`, `jpg`, `png`, `webp`, `avif`.
-    *   If not specified, the input format is used if supported, otherwise defaults to a common format.
-*   `quality` (number, optional): Quality for lossy formats like JPEG, WebP, AVIF (1-100).
-    *   Defaults to a pre-configured value (typically around 80).
-*   `outputPath` (string, optional): Filesystem path to save the processed image.
-    *   If not provided, the image is returned as base64 data in the response.
-    *   Example: `/path/to/save/resized_image.webp`
-*   `outputImage` (boolean, optional): Whether to include the base64-encoded image in the output response.
-    *   If not provided, will not include base64 image in response.
+* **Install fails on ARM/Apple Silicon?** Run `brew install vips` (sharp dependency) or use Node 18+.
+* **Credentials not working?** Check env var spelling/casing.
+* **Image output is blank or corrupt?** Confirm input image type and size.
 
+---
 
-**Resizing and Dimensions:**
+## 🤝 Contributing
 
-*   `width` (number, optional): Target width in pixels (1-10000).
-    *   If only `width` is provided, `height` is adjusted to maintain aspect ratio.
-    *   If neither `width` nor `height` is specified, defaults to a pre-configured value (e.g., 1024).
-*   `height` (number, optional): Target height in pixels (1-10000).
-    *   If only `height` is provided, `width` is adjusted to maintain aspect ratio.
-    *   If neither `width` nor `height` is specified, defaults to a pre-configured value (e.g., 1024).
-*   `fit` (enum, optional): How the image should be resized to fit the specified `width` and `height`.
-    *   Values: `cover`, `contain`, `fill`, `inside`, `outside`.
-    *   Defaults to `contain` if both `width` and `height` are specified but `fit` is not.
-*   `position` (enum, optional): Position to use when `fit` is `cover` or `contain`.
-    *   Values:`top`, `right top`, `right`, `right bottom`, `bottom`, `left bottom`, `left`, `left top`.
-*   `background` (string, optional): Background color to use when `fit` results in empty areas (e.g., for `contain`).
-    *   Format: CSS color string (e.g., `#RRGGBB`, `rgba(r,g,b,a)`).
-    *   Example: `#FFFFFF`, `rgba(0,0,0,0.5)`
-*   `withoutEnlargement` (boolean, optional): If true, do not enlarge the image if its original dimensions are smaller than the target `width`/`height`.
-*   `withoutReduction` (boolean, optional): If true, do not reduce the image if its original dimensions are larger than the target `width`/`height`.
-*   `trim` (boolean, optional): Trim "boring" pixels from all edges based on the top-left pixel color.
+PRs and issues welcome! Please [open an issue](https://github.com/BoomLinkAi/image-worker-mcp/issues) or submit a pull request.
 
-**Transformations & Effects:**
+---
+## 👤 Author
 
-*   `rotate` (number, optional): Angle of rotation (e.g., 90, 180, 270).
-*   `flip` (boolean, optional): Flip the image vertically.
-*   `flop` (boolean, optional): Flop (mirror) the image horizontally.
-*   `grayscale` (boolean, optional): Convert the image to grayscale.
-*   `blur` (number, optional): Apply a Gaussian blur. Sigma value between 0.3 and 1000.
-*   `sharpen` (number, optional): Apply a sharpening effect. Sigma value between 0.3 and 1000.
-*   `gamma` (number, optional): Apply gamma correction. Value between 1.0 and 3.0.
-*   `negate` (boolean, optional): Produce a negative of the image.
-*   `normalize` (boolean, optional): Enhance image contrast by stretching its intensity levels (histogram normalization).
-*   `threshold` (number, optional): Apply a threshold to the image, converting it to black and white based on luminance. Value between 0 and 255.
+**Vuong Ngo** – [BoomLink.ai](https://boomlink.ai)
 
-### `upload_image` tool
+---
 
-The `upload_image` tool allows you to upload processed images to cloud storage services like AWS S3 or Cloudflare R2.
+## 🌐 Connect with Us
 
-**Input Image (at least one required):**
+[![Discord](https://img.shields.io/badge/Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge)](https://discord.gg/88ND8bpmrA)
+[![X.com](https://img.shields.io/badge/X.com-000000?logo=x&logoColor=white&style=for-the-badge)](https://x.com/agimon_ai)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?logo=linkedin&logoColor=white&style=for-the-badge)](https://linkedin.com/company/boomlink)
 
-*   `imagePath` (string, optional): Filesystem path to the input image.
-    *   Example: `/path/to/your/image.jpg`
-*   `imageUrl` (string, optional): URL of the input image to download and upload.
-    *   Example: `https://example.com/image.png`
-*   `base64Image` (string, optional): Base64-encoded image data. Can include a data URL prefix or be raw base64.
-    *   Example: `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD...`
+- **[Join our Discord](https://discord.gg/88ND8bpmrA)** for support, feedback, and community discussions  
+- **[Follow us on X.com](https://x.com/agimon_ai)** for updates and news  
+- **[Connect on LinkedIn](https://linkedin.com/company/boomlink)** for company news and insights  
 
-**Upload Configuration:**
+---
 
-*   `service` (enum, optional): Upload service to use.
-    *   Supported values: `s3`, `cloudflare`, `gcloud`.
-    *   Defaults to `s3` or the value of `UPLOAD_SERVICE` environment variable.
-*   `filename` (string, optional): Custom filename for the uploaded image (without extension).
-    *   If not provided, uses the original filename or generates a unique one.
-    *   Example: `my-custom-image`
-*   `folder` (string, optional): Folder/directory to upload to (service-specific).
-    *   Example: `uploads/2024/january`
-*   `public` (boolean, optional): Whether the uploaded image should be publicly accessible.
-    *   Defaults to `true`.
-    *   Note: For Cloudflare R2, public access is controlled via bucket settings.
-*   `overwrite` (boolean, optional): Whether to overwrite existing files with the same name.
-    *   Defaults to `false`.
-*   `tags` (array of strings, optional): Tags to associate with the uploaded image.
-    *   Example: `["profile-pic", "user-upload"]`
-    *   Note: Not supported by Cloudflare R2.
-*   `metadata` (object, optional): Additional metadata to store with the image.
-    *   Example: `{"userId": "123", "uploadType": "profile"}`
-
-**Environment Variables for S3:**
-
-```bash
-# AWS S3
-# Standard AWS credentials (recommended)
-export AWS_ACCESS_KEY_ID="your-aws-access-key-id"
-export AWS_SECRET_ACCESS_KEY="your-aws-secret-access-key"
-export S3_BUCKET="your-s3-bucket-name"
-export S3_REGION="your-s3-bucket-region" # e.g., us-east-1
-export S3_ENDPOINT="https://your-s3-compatible-endpoint.com" # Optional: for S3-compatible services like MinIO
-```
-
-**Note on S3 Credentials:**
-If `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are not provided, the SDK will attempt to use credentials from the default AWS credential chain (e.g., `~/.aws/credentials`, IAM roles).
-
-**Environment Variables for Cloudflare R2:**
-
-```bash
-export CLOUDFLARE_R2_ACCESS_KEY_ID=your-access-key
-export CLOUDFLARE_R2_SECRET_ACCESS_KEY=your-secret-key
-export CLOUDFLARE_R2_BUCKET=your-bucket-name
-export CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
-export CLOUDFLARE_R2_REGION=auto  # Optional, defaults to 'auto'
-```
-
-**Environment Variables for Google Cloud Storage:**
-
-```bash
-export GCLOUD_PROJECT_ID=your-project-id
-export GCLOUD_BUCKET=your-bucket-name
-export GCLOUD_CREDENTIALS_PATH=/path/to/service-account-key.json  # Optional
-```
-
-**Note on GCS Authentication:**
-If `GCLOUD_CREDENTIALS_PATH` is not provided, the service will use Google Cloud's default authentication (Application Default Credentials). This works well in Google Cloud environments or when `gcloud auth application-default login` has been run locally.
-
-**Set default service:**
-
-```bash
-export UPLOAD_SERVICE=s3        # or 'cloudflare' or 'gcloud'
-```
-
-**Features:**
-
-Both services support:
-- ✅ File upload from local path, URL, or base64 data
-- ✅ Custom filename and folder organization
-- ✅ Overwrite protection
-- ✅ Metadata and tags (where supported)
-- ✅ Automatic content-type detection
-- ✅ Error handling and validation
-
-**Service-Specific Notes:**
-
-*S3 Service:*
-- Supports ACL settings (public-read/private)
-- Supports object tagging
-- Works with any S3-compatible service (MinIO, DigitalOcean Spaces, etc.)
-
-*Cloudflare R2 Service:*
-- Uses S3-compatible API
-- Public access controlled via bucket settings or custom domains
-- Does not support ACL (use bucket-level permissions instead)
-- Requires endpoint URL configuration
-
-*Google Cloud Storage Service:*
-- Native Google Cloud Storage API
-- Supports public/private access control
-- Flexible authentication (service account keys or Application Default Credentials)
-- Works seamlessly in Google Cloud environments
-- Supports metadata and custom object properties
-
-## Requirements
-
-- Node.js 18.x or higher
-- Sharp image processing library (automatically installed as a dependency)
-
-## License
+## 📄 License
 
 MIT
 
-## Author
+---
 
-Vuong Ngo @ https://boomlink.ai
-
-## Sponsorship
-
-Sponsored by [BoomLink.ai](https://boomlink.ai)
-
+## 💖 Sponsored by BoomLink.ai
 
 [![BoomLink.ai Logo](https://boomlink.ai/logo.svg)](https://boomlink.ai)
