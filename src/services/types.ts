@@ -15,6 +15,7 @@ export interface UploadServiceConfig {
   uploadPreset?: string;
   localPath?: string;
   baseUrl?: string;
+  projectId?: string;
 }
 
 // Upload result interface

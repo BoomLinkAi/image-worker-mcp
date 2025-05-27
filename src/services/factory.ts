@@ -3,8 +3,9 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { BaseUploadService, UploadService } from './types';
 import { S3UploadService, S3EnvConfigSchema, ValidatedS3EnvConfig } from './s3';
 import { CloudflareUploadService, CloudflareEnvConfigSchema, ValidatedCloudflareEnvConfig } from './cloudflare';
+import { GCloudUploadService, GCloudEnvConfigSchema, ValidatedGCloudEnvConfig } from './gcloud';
 
-export function loadUploadConfig(service?: UploadService): ValidatedS3EnvConfig | ValidatedCloudflareEnvConfig {
+export function loadUploadConfig(service?: UploadService): ValidatedS3EnvConfig | ValidatedCloudflareEnvConfig | ValidatedGCloudEnvConfig {
   const selectedService = service || (process.env.UPLOAD_SERVICE as UploadService) || 's3';
 
   if (selectedService === 's3') {
@@ -27,7 +28,16 @@ export function loadUploadConfig(service?: UploadService): ValidatedS3EnvConfig 
       CLOUDFLARE_R2_ENDPOINT: process.env.CLOUDFLARE_R2_ENDPOINT,
     });
     return cfRawConfig;
-  } else {
+  } else if (selectedService === 'gcloud') {
+    const gcloudRawConfig = GCloudEnvConfigSchema.parse({
+      UPLOAD_SERVICE: 'gcloud',
+      GCLOUD_BUCKET: process.env.GCLOUD_BUCKET,
+      GCLOUD_PROJECT_ID: process.env.GCLOUD_PROJECT_ID,
+      GCLOUD_CREDENTIALS_PATH: process.env.GCLOUD_CREDENTIALS_PATH,
+    });
+    return gcloudRawConfig;
+  }
+   else {
     throw new McpError(ErrorCode.InvalidParams, `Unsupported upload service`);
   }
 }
@@ -42,6 +52,8 @@ export class UploadServiceFactory {
           return new S3UploadService(config);
         case 'cloudflare':
           return new CloudflareUploadService(config);
+        case 'gcloud':
+          return new GCloudUploadService(config);
         default:
           throw new McpError(ErrorCode.InvalidParams, `Unsupported upload service`);
       }

@@ -6,5 +6,5 @@ export const DEFAULT_WIDTH = 800;
 export const DEFAULT_HEIGHT = 600;
 
 // Upload service constants
-export const SUPPORTED_UPLOAD_SERVICES = ['s3', 'cloudflare'] as const;
+export const SUPPORTED_UPLOAD_SERVICES = ['s3', 'cloudflare', 'gcloud'] as const;
 export const DEFAULT_UPLOAD_SERVICE = 's3';
