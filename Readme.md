@@ -29,7 +29,7 @@ npx @boomlinkai/image-worker-mcp
 - Convert images between formats (JPEG, PNG, WebP, AVIF) or from (HEIC, HEIF)
 - Optimize images for web use
 - Apply basic transformations (rotate, flip, etc.)
-- Upload images to cloud storage (AWS S3, Cloudflare R2)
+- Upload images to cloud storage (AWS S3, Cloudflare R2, Google Cloud Storage)
 - Support for multiple input sources (file path, URL, base64)
 
 ## Usage
@@ -251,7 +251,7 @@ The `upload_image` tool allows you to upload processed images to cloud storage s
 **Upload Configuration:**
 
 *   `service` (enum, optional): Upload service to use.
-    *   Supported values: `s3`, `cloudflare`.
+    *   Supported values: `s3`, `cloudflare`, `gcloud`.
     *   Defaults to `s3` or the value of `UPLOAD_SERVICE` environment variable.
 *   `filename` (string, optional): Custom filename for the uploaded image (without extension).
     *   If not provided, uses the original filename or generates a unique one.
@@ -294,10 +294,21 @@ export CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
 export CLOUDFLARE_R2_REGION=auto  # Optional, defaults to 'auto'
 ```
 
+**Environment Variables for Google Cloud Storage:**
+
+```bash
+export GCLOUD_PROJECT_ID=your-project-id
+export GCLOUD_BUCKET=your-bucket-name
+export GCLOUD_CREDENTIALS_PATH=/path/to/service-account-key.json  # Optional
+```
+
+**Note on GCS Authentication:**
+If `GCLOUD_CREDENTIALS_PATH` is not provided, the service will use Google Cloud's default authentication (Application Default Credentials). This works well in Google Cloud environments or when `gcloud auth application-default login` has been run locally.
+
 **Set default service:**
 
 ```bash
-export UPLOAD_SERVICE=s3        # or 'cloudflare'
+export UPLOAD_SERVICE=s3        # or 'cloudflare' or 'gcloud'
 ```
 
 **Features:**
@@ -322,6 +333,13 @@ Both services support:
 - Public access controlled via bucket settings or custom domains
 - Does not support ACL (use bucket-level permissions instead)
 - Requires endpoint URL configuration
+
+*Google Cloud Storage Service:*
+- Native Google Cloud Storage API
+- Supports public/private access control
+- Flexible authentication (service account keys or Application Default Credentials)
+- Works seamlessly in Google Cloud environments
+- Supports metadata and custom object properties
 
 ## Requirements
 
