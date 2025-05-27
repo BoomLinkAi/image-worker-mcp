@@ -1,6 +1,6 @@
 # @boomlinkai/image-worker-mcp
 
-![Demo: Image Resize and Upload](https://static.boomlink.ai/resize-upload.gif)
+![Demo: Image Resize and Upload](https://static.boomlink.ai/resize-upload-small.gif)
 
 A fast, plug-and-play MCP server for **image processing** and **cloud uploads**, designed for AI assistants and automation workflows.
 
