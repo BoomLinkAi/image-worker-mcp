@@ -1,3 +1,10 @@
+## <small>0.0.5 (2025-05-27)</small>
+
+* feat(gcloud): gcloud storage ([eba8e59](https://github.com/BoomLinkAi/image-worker-mcp/commit/eba8e59))
+* fix(publish): fix git push after publish ([6fd0dcd](https://github.com/BoomLinkAi/image-worker-mcp/commit/6fd0dcd))
+
+
+
 ## <small>0.0.4 (2025-05-26)</small>
 
 * fix(bin): command ([1db07fb](https://github.com/BoomLinkAi/image-worker-mcp/commit/1db07fb))
@@ -24,6 +31,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.0.5] - 2025-05-27
+
+### Changed
+- Release version 0.0.5
+
+
 ## [0.0.4] - 2025-05-26
 
 ### Changed
