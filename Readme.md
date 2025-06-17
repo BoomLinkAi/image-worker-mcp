@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/boomlinkai-image-worker-mcp-badge.png)](https://mseep.ai/app/boomlinkai-image-worker-mcp)
+
 # @boomlinkai/image-worker-mcp
 
 ![Demo: Image Resize and Upload](https://static.boomlink.ai/resize-upload-small.gif)
